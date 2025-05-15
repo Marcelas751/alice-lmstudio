@@ -8,13 +8,13 @@ use GuzzleHttp\Client;
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-// Инициализация клиента DeepSeek
+// Инициализация клиента для LM Studio API
 $client = new Client([
-    'base_uri' => 'https://api.deepseek.com', // URL API DeepSeek
-    'timeout'  => 30.0,
+    'base_uri' => 'http://localhost:1234/v1/', // Адрес вашего LM Studio API
+    'timeout'  => 60.0,  // Увеличьте таймаут для локальных запросов
 ]);
 
-// Хранение состояния пользователей (можно заменить на базу данных)
+// Хранение состояния пользователей
 session_start();
 if (!isset($_SESSION['users_state'])) {
     $_SESSION['users_state'] = [];
@@ -31,30 +31,36 @@ function cleanRequest($request) {
     return trim($request);
 }
 
-// Функция для взаимодействия с DeepSeek
-function askDeepSeek($message, $messages, $client) {
-    $apiKey = $_ENV['DEEPSEEK_API_KEY']; // Используем ключ DeepSeek
-    $allMessages = $messages;
-    $allMessages[] = $message;
+// Функция для взаимодействия с LM Studio API
+function askLLM($message, $messages, $client) {
+    // Подготовка массива сообщений в правильном формате
+    $formattedMessages = [
+        ['role' => 'system', 'content' => 'Ты дружелюбный ассистент. Отвечай кратко и по делу.']
+    ];
 
-    $formattedMessages = [];
-    foreach ($allMessages as $msg) {
-        $formattedMessages[] = [
-            "role" => "user",
-            "content" => $msg
-        ];
+    // Конвертируем предыдущие сообщения из строк в объекты
+    foreach ($messages as $msg) {
+        $formattedMessages[] = ['role' => 'user', 'content' => $msg];
     }
 
+    // Добавляем текущее сообщение
+    $formattedMessages[] = ['role' => 'user', 'content' => $message];
+
     try {
-        $response = $client->post('/v1/chat/completions', [
+        $response = $client->post('chat/completions', [
             'headers' => [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ],
             'json' => [
-                'model' => 'deepseek-chat', // Указываем модель DeepSeek
-                'messages' => $formattedMessages,
-                'stream' => false // Потоковый вывод можно включить, если нужно
+                'model' => 'meta-llama-3.1-8b-instruct-128k',
+                'messages' => $formattedMessages, // Используем правильно форматированный массив
+                'top_p' => 0.95,
+                'top_k' => 40,
+                'min_p' => 0.05,
+                'frequency_penalty' => 1.1,
+                'temperature' => 0.8,
+                'max_tokens' => 200,
+                'stream' => false
             ],
         ]);
 
@@ -62,10 +68,9 @@ function askDeepSeek($message, $messages, $client) {
         return trim($body['choices'][0]['message']['content']);
     } catch (Exception $e) {
         error_log($e->getMessage());
-        return 'Не удалось получить ответ от сервиса.';
+        return 'Не удалось получить ответ от сервиса. Ошибка: ' . $e->getMessage();
     }
 }
-
 // Обработка POST-запроса
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -91,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userMessage = cleanRequest($input['request']['original_utterance']);
         $userState['messages'][] = $userMessage;
 
-        $botReply = askDeepSeek($userMessage, $userState['messages'], $client);
+        $botReply = askLLM($userMessage, $userState['messages'], $client);
         $response['response']['text'] = $botReply;
         $response['response']['tts'] = $botReply . '<speaker audio="alice-sounds-things-door-2.opus">';
     } else {
@@ -102,7 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
 } else {
-    // Обработка других типов запросов, если необходимо
     header("HTTP/1.1 405 Method Not Allowed");
     echo "Метод не поддерживается.";
 }
