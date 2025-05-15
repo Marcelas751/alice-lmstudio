@@ -10,7 +10,7 @@ $dotenv->load();
 
 // Инициализация клиента для LM Studio API
 $client = new Client([
-    'base_uri' => 'http://195.122.229.112:1234/v1/', // Адрес вашего LM Studio API
+    'base_uri' => 'http://localhost:1234/v1/', // Адрес вашего LM Studio API
     'timeout'  => 60.0,  // Увеличьте таймаут для локальных запросов
 ]);
 
