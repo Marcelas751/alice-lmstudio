@@ -10,7 +10,7 @@ $dotenv->load();
 
 // Инициализация клиента для LM Studio API
 $client = new Client([
-    'base_uri' => 'http://localhost:1234/v1/', // Адрес вашего LM Studio API
+    'base_uri' => 'http://195.122.229.112:1234/v1/', // Адрес вашего LM Studio API
     'timeout'  => 60.0,  // Увеличьте таймаут для локальных запросов
 ]);
 
@@ -35,7 +35,7 @@ function cleanRequest($request) {
 function askLLM($message, $messages, $client) {
     // Подготовка массива сообщений в правильном формате
     $formattedMessages = [
-        ['role' => 'system', 'content' => 'Ты дружелюбный ассистент. Отвечай кратко и по делу.'] //Предустановка "личности" модели
+        ['role' => 'system', 'content' => 'Ты дружелюбный ассистент. Отвечай кратко и по делу.']
     ];
 
     // Конвертируем предыдущие сообщения из строк в объекты
@@ -55,7 +55,10 @@ function askLLM($message, $messages, $client) {
                 'model' => 'meta-llama-3.1-8b-instruct-128k',
                 'messages' => $formattedMessages, // Используем правильно форматированный массив
                 'top_p' => 0.95,
-                'temperature' => 0.9,
+                'top_k' => 40,
+                'min_p' => 0.05,
+                'frequency_penalty' => 1.1,
+                'temperature' => 0.8,
                 'max_tokens' => 200,
                 'stream' => false
             ],
