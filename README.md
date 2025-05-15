@@ -40,6 +40,7 @@ Settings → Server → Enable Local Server
 
 Укажите URL вашего сервера (например, http://ваш-ip:порт/index.php)
 ```
+https://vkvideo.ru/video12063675_456239019?list=ln-AQUFOWfzgoz0RZStV0
 ### Конфигурация
 Ключевые файлы:
 ```bash
